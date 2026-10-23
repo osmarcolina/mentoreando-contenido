@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Calcula cuántas horas y cuánto dinero te cuesta hacerlo todo tú, y cuánto podrías pasarle a la IA.">
+<title>¿Cuánto te cuesta hacerlo todo tú?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: una columna tipo "hoja de cálculo de dueño": lista de tareas arriba, recibo del costo abajo, pensado primero para celular */
+:root{
+  --bg:#0E0F0C; --panel:#161813; --line:#2A2C26; --fg:#F2F2EC; --soft:#D6D7CF; --muted:#8A8B84; --lime:#C8F031; --ink:#0E0F0C;
+  --display:'Sora', system-ui, sans-serif; --mono:'JetBrains Mono', 'DejaVu Sans Mono', ui-monospace, monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--display);font-size:16px;line-height:1.5}
+.wrap{max-width:720px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:36px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-0.03em;font-size:20px}
+.brand svg{width:34px;height:34px}
+.lime{color:var(--lime)}
+.label{font-family:var(--mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--lime)}
+.hero{display:flex;flex-direction:column;gap:14px}
+h1{margin:0;font-size:clamp(34px, 8vw, 54px);line-height:1.04;letter-spacing:-0.035em;text-wrap:balance}
+.lead{margin:0;color:var(--soft);font-size:17px;max-width:58ch}
+section{display:flex;flex-direction:column;gap:16px}
+h2{margin:0;font-size:22px;letter-spacing:-0.02em}
+.hint{margin:0;color:var(--muted);font-size:14px}
+.tasks{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.task{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:16px 0;border-bottom:1px solid var(--line)}
+.task.off .body{opacity:.45}
+.chk{appearance:none;width:26px;height:26px;border:3px solid var(--lime);border-radius:7px;margin:2px 0 0;cursor:pointer;display:grid;place-items:center}
+.chk:checked{background:var(--lime)}
+.chk:checked::after{content:"";width:6px;height:12px;border:solid var(--ink);border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.body{display:flex;flex-direction:column;gap:10px;min-width:0}
+.name{resize:none;overflow:hidden;line-height:1.35;font-size:17px;font-weight:600;background:transparent;border:0;color:var(--fg);font-family:inherit;padding:0;width:100%}
+.name:focus{outline:none;border-bottom:1px dashed var(--muted)}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.hours{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;color:var(--muted)}
+.step{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font-size:18px;cursor:pointer;font-family:var(--mono)}
+.step:hover{border-color:var(--lime)}
+.hours output{min-width:2.6ch;text-align:center;font-size:18px;color:var(--fg);font-variant-numeric:tabular-nums}
+.ai{display:flex;gap:4px;font-family:var(--mono);font-size:11px;letter-spacing:.08em}
+.ai span{color:var(--muted);align-self:center;margin-right:4px}
+.ai button{border:1px solid var(--line);background:transparent;color:var(--soft);border-radius:999px;padding:5px 10px;cursor:pointer;font:inherit}
+.ai button[aria-pressed="true"]{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.add{align-self:flex-start;border:1px dashed var(--muted);background:transparent;color:var(--fg);padding:10px 16px;border-radius:10px;cursor:pointer;font-family:inherit;font-size:15px}
+.add:hover{border-color:var(--lime);color:var(--lime)}
+.rate{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.rate label{font-size:15px;flex:1 1 220px}
+.rate input{width:110px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--fg);font-family:var(--mono);font-size:18px;padding:8px 10px;font-variant-numeric:tabular-nums}
+.rate small{display:block;color:var(--muted);font-size:13px}
+button:focus-visible,input:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+
+.receipt{background:var(--fg);color:var(--ink);border-radius:16px;padding:24px 20px;display:flex;flex-direction:column;gap:18px}
+.receipt .label{color:#5E7A0A}
+.big{font-size:clamp(52px, 14vw, 88px);font-weight:700;letter-spacing:-0.05em;line-height:.95;font-variant-numeric:tabular-nums}
+.big small{font-size:.32em;letter-spacing:-0.01em;font-weight:600}
+.rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;border-top:2px dashed #C9CAC2;padding-top:16px}
+.row{display:flex;flex-direction:column;gap:2px}
+.row b{font-size:28px;letter-spacing:-0.03em;font-variant-numeric:tabular-nums}
+.row span{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#5C5E57}
+.save{background:var(--ink);color:var(--fg);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:4px}
+.save b{font-size:30px;color:var(--lime);letter-spacing:-0.03em;font-variant-numeric:tabular-nums}
+.heavy{margin:0;font-size:16px}
+.cta{display:flex;flex-direction:column;gap:14px}
+.cta p{margin:0;color:var(--soft)}
+.msg{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;color:var(--fg);user-select:all;word-break:break-word}
+.btns{display:flex;flex-wrap:wrap;gap:10px}
+.primary{background:var(--lime);color:var(--ink);border:0;border-radius:10px;padding:14px 18px;font-family:inherit;font-weight:700;font-size:16px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.ghost{background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:14px 18px;font-family:inherit;font-size:16px;cursor:pointer}
+.note{color:var(--muted);font-size:13px;margin:0}
+@media (prefers-reduced-motion:no-preference){.big{transition:color .2s}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="brand"><svg viewBox="-38.6 -42.8 176.9 176.9" aria-hidden="true"><path d="M98.0 18.0 L100.1 20.3 L102.0 22.7 L103.8 25.3 L105.5 27.9 L107.1 30.7 L108.5 33.5 L109.8 36.4 L110.9 39.4 L111.8 42.5 L112.6 45.6 L113.3 48.8 L113.8 52.0 L114.1 55.3 L114.2 58.5 L114.1 61.8 L113.9 65.2 L113.5 68.5 L112.9 71.8 L112.2 75.0 L111.3 78.3 L110.2 81.5 L108.9 84.6 L107.4 87.7 L105.8 90.8 L104.0 93.7 L102.1 96.6 L100.0 99.3 L97.7 102.0 L95.3 104.6 L92.8 107.0 L90.1 109.3 L87.3 111.5 L84.3 113.5 L81.3 115.4 L78.1 117.1 L74.8 118.6 L71.5 120.0 L68.1 121.2 L64.5 122.2 L61.0 123.1 L57.3 123.7 L53.7 124.2 L50.0 124.5 L46.2 124.6 L42.5 124.4 L38.8 124.1 L35.0 123.6 L31.3 122.9 L27.6 122.0 L24.0 120.8 L20.4 119.5 L16.8 118.0 L13.3 116.3 L10.0 114.4 L6.7 112.3 L3.5 110.1 L0.4 107.7 L-2.6 105.1 L-5.4 102.3 L-8.1 99.4 L-10.6 96.3 L-13.0 93.1 L-15.2 89.8 L-17.3 86.3 L-19.1 82.7 L-20.8 79.0 L-22.3 75.2 L-23.6 71.4 L-24.7 67.4 L-25.5 63.4 L-26.2 59.3 L-26.7 55.2 L-26.9 51.1 L-26.9 46.9 L-26.7 42.7 L-26.3 38.5 L-25.6 34.4 L-24.8 30.2 L-23.7 26.1 L-22.4 22.1 L-20.8 18.1 L-19.1 14.1 L-17.1 10.3 L-15.0 6.6 L-12.6 2.9 L-10.0 -0.6 L-7.3 -4.0 L-4.3 -7.2 L-1.2 -10.3 L2.1 -13.2 L5.5 -16.0 L9.1 -18.6 L12.9 -21.0 L16.8 -23.2 L20.8 -25.2 L24.9 -27.0 L29.1 -28.6 L33.5 -30.0 L37.9 -31.1 L42.3 -32.0 L46.8 -32.7 L51.4 -33.1 L56.0 -33.3 L60.6 -33.3 L65.2 -33.0 L69.9 -32.4 L74.4 -31.6 L79.0 -30.6 L83.5 -29.3 L88.0 -27.8 L92.4 -26.1 L96.7 -24.1 L100.9 -21.8 L104.9 -19.4 L108.9 -16.7 L112.7 -13.8 L116.4 -10.8 L119.9 -7.5 L123.3 -4.0 L126.5 -0.3" fill="none" stroke="#C8F031" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="14" cy="72" r="8" fill="#F2F2EC"/><circle cx="38" cy="56" r="11" fill="#F2F2EC"/><circle cx="66" cy="40" r="14" fill="#F2F2EC"/><circle cx="98" cy="18" r="16" fill="#C8F031"/></svg><span>mentoreand<span class="lime">o</span></span></div>
+
+  <header class="hero">
+    <div class="label">Calculadora · 2 minutos</div>
+    <h1>¿Cuánto te cuesta hacerlo <span class="lime">todo tú</span>?</h1>
+    <p class="lead">Marca las tareas que haces cada semana en tu negocio y ajusta las horas. Al final ves cuánto tiempo y dinero se te va, y cuánto podrías recuperar con IA.</p>
+  </header>
+
+  <section aria-labelledby="t1">
+    <h2 id="t1">Tus tareas de la semana</h2>
+    <p class="hint">Vienen con ejemplos. Cambia el nombre, las horas y cuánto crees que la IA podría ayudarte.</p>
+    <div class="tasks" id="tasks"></div>
+    <button class="add" id="add" type="button">+ Agregar otra tarea</button>
+  </section>
+
+  <section aria-labelledby="t2">
+    <h2 id="t2">¿Cuánto vale tu hora?</h2>
+    <div class="rate">
+      <label for="rate">Lo que ganarías por hora haciendo lo que solo tú puedes hacer (vender, crear, decidir)<small>En dólares. Si no lo sabes, deja 10.</small></label>
+      <input id="rate" type="number" min="0" step="1" value="10" inputmode="decimal">
+    </div>
+  </section>
+
+  <section aria-labelledby="t3">
+    <div class="receipt" aria-live="polite">
+      <div class="label" id="t3">Tu resultado</div>
+      <div>
+        <div class="big"><span id="hMonth">0</span> <small>horas al mes</small></div>
+        <p class="heavy" id="days"></p>
+      </div>
+      <div class="rows">
+        <div class="row"><b id="cost">$0</b><span>Te cuesta al mes</span></div>
+        <div class="row"><b id="hWeek">0 h</b><span>Por semana</span></div>
+      </div>
+      <div class="save">
+        <span class="label">Podrías recuperar con IA</span>
+        <b id="saveH">0 horas al mes</b>
+        <span id="saveC" style="color:var(--soft)"></span>
+      </div>
+      <p class="heavy">Tu tarea más pesada: <strong id="heavy">—</strong></p>
+    </div>
+  </section>
+
+  <section class="cta" aria-labelledby="t4">
+    <h2 id="t4">¿Quieres saber cómo la automatizaría yo?</h2>
+    <p>Déjame tus datos y te respondo yo, personalmente, cómo le pasaría esa tarea a la IA: la herramienta que usaría, el primer paso que puedes dar hoy y cuánto tiempo te ahorraría. Es lo mismo que hago en mis negocios de fotografía y alimentos.</p>
+    <div class="msg" id="msg"></div>
+    <div class="btns">
+      <a class="primary" href="https://mentoreando.kit.com/2df526677d" target="_blank" rel="noopener">Quiero mi respuesta</a>
+      <button class="ghost" id="copy" type="button">Copiar mi resultado</button>
+    </div>
+    <p class="note" id="copied" hidden>Copiado. Pégalo en el formulario.</p>
+    <p class="note">Los porcentajes de ayuda de la IA son estimaciones orientativas que tú eliges: baja 20 %, media 50 %, alta 70 % del tiempo de la tarea. Un mes se cuenta como 4,3 semanas.</p>
+  </section>
+</div>
+
+<script>
+const LEVELS={baja:.2,media:.5,alta:.7};
+let tasks=[
+  {n:'Responder mensajes repetidos de clientes',h:6,ai:'alta',on:true},
+  {n:'Hacer presupuestos y cotizaciones',h:3,ai:'alta',on:true},
+  {n:'Crear y publicar contenido en redes',h:5,ai:'media',on:true},
+  {n:'Cobros, facturas y recordatorios de pago',h:2,ai:'alta',on:true},
+  {n:'Pedidos, inventario y proveedores',h:3,ai:'media',on:false},
+  {n:'Agendar citas y confirmar reservas',h:2,ai:'alta',on:false},
+  {n:'Ordenar los números del negocio',h:2,ai:'media',on:false}
+];
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.round(n).toLocaleString('es');
+const money=n=>'$'+Math.round(n).toLocaleString('es');
+
+function draw(){
+  const box=$('tasks'); box.innerHTML='';
+  tasks.forEach((t,i)=>{
+    const d=document.createElement('div'); d.className='task'+(t.on?'':' off');
+    d.innerHTML=`<input class="chk" type="checkbox" id="c${i}" ${t.on?'checked':''} aria-label="Incluir tarea">
+    <div class="body"><textarea class="name" id="n${i}" rows="1" aria-label="Nombre de la tarea"></textarea>
+    <div class="controls"><div class="hours"><button class="step" type="button" data-d="-1" aria-label="Menos horas">−</button><output id="h${i}">${t.h}</output><button class="step" type="button" data-d="1" aria-label="Más horas">+</button> h/semana</div>
+    <div class="ai"><span>IA:</span>${Object.keys(LEVELS).map(k=>`<button type="button" data-ai="${k}" aria-pressed="${t.ai===k}">${k}</button>`).join('')}</div></div></div>`;
+    d.querySelector('.chk').onchange=e=>{t.on=e.target.checked;draw()};
+    const nm=d.querySelector('.name');nm.value=t.n;const fit=()=>{nm.style.height='auto';nm.style.height=nm.scrollHeight+'px'};nm.oninput=e=>{t.n=e.target.value;fit();calc()};requestAnimationFrame(fit);document.fonts&&document.fonts.ready.then(fit);addEventListener("resize",fit);
+    d.querySelectorAll('.step').forEach(b=>b.onclick=()=>{t.h=Math.max(0,Math.min(60,t.h+ +b.dataset.d));if(t.h>0)t.on=true;draw()});
+    d.querySelectorAll('[data-ai]').forEach(b=>b.onclick=()=>{t.ai=b.dataset.ai;draw()});
+    box.appendChild(d);
+  });
+  calc();
+}
+function calc(){
+  const rate=Math.max(0,parseFloat($('rate').value)||0);
+  const act=tasks.filter(t=>t.on&&t.h>0);
+  const wk=act.reduce((s,t)=>s+t.h,0), mo=wk*4.3;
+  const sv=act.reduce((s,t)=>s+t.h*LEVELS[t.ai],0)*4.3;
+  $('hMonth').textContent=fmt(mo);
+  $('hWeek').textContent=fmt(wk)+' h';
+  $('cost').textContent=money(mo*rate);
+  $('days').textContent=mo>0?`Son unas ${fmt(mo/8)} jornadas de 8 horas cada mes.`:'Marca al menos una tarea.';
+  $('saveH').textContent=fmt(sv)+' horas al mes';
+  $('saveC').textContent=sv>0?`Equivale a ${money(sv*rate)} al mes de tu tiempo.`:'';
+  const top=act.slice().sort((a,b)=>b.h-a.h)[0];
+  const name=top?top.n.trim()||'(sin nombre)':'—';
+  $('heavy').textContent=top?`${name} (${top.h} h/semana)`:'—';
+  $('msg').textContent=top?`Tarea más pesada: ${name}. Horas al mes: ${fmt(mo)}.`:'Marca al menos una tarea para ver tu resultado.';
+}
+$('rate').oninput=calc;
+$('add').onclick=()=>{tasks.push({n:'Nueva tarea',h:2,ai:'media',on:true});draw();const i=tasks.length-1;const el=$('n'+i);el.focus();el.select()};
+$('copy').onclick=()=>{
+  const t=$('msg').textContent, ok=()=>{$('copied').hidden=false};
+  try{navigator.clipboard.writeText(t).then(ok).catch(sel)}catch(e){sel()}
+  function sel(){const r=document.createRange();r.selectNodeContents($('msg'));const s=getSelection();s.removeAllRanges();s.addRange(r);$('copied').textContent='Texto seleccionado: cópialo y pégalo en el formulario.';ok()}
+};
+draw();
+</script>
+
+</body>
+</html>
